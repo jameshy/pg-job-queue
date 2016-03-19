@@ -1,0 +1,25 @@
+{
+  "name": "pg-job-queue",
+  "version": "0.0.1",
+  "description": "A job queue for node.js based on PostgreSQL",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "mocha test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jameshy/pg-job-queue.git"
+  },
+  "keywords": [
+    "postgres",
+    "postgresql",
+    "job",
+    "queue"
+  ],
+  "author": "James Hutchby",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jameshy/pg-job-queue/issues"
+  },
+  "homepage": "https://github.com/jameshy/pg-job-queue#readme"
+}

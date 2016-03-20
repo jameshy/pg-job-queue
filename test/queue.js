@@ -129,9 +129,8 @@ describe('Job Queue', function() {
             }
             return loop()
         }).catch(function(e) {
-            if (!(e instanceof jobqueue.pgp.QueryResultError)) {
+            if (!(e instanceof jobqueue.errors.JobQueueEmpty)) {
                 throw e
-
             }
         }).then(function() {
             // job has been run many times and should have reached complete failure
@@ -165,7 +164,7 @@ describe('Job Queue', function() {
             }
             return loop()
         }).catch(function(e) {
-            if (!(e instanceof jobqueue.pgp.QueryResultError)) {
+            if (!(e instanceof jobqueue.errors.JobQueueEmpty)) {
                 throw e
             }
         }).then(function() {
@@ -199,6 +198,18 @@ describe('Job Queue', function() {
         .then(jobqueue.processNextJob)
         .then(jobqueue.waitingCount).then(function(count) {
             expect(count).to.equal(1)
+        })
+    })
+
+    it('should only process jobs with handlers available', function() {
+        var job = {
+            type: 'sendmail',
+        }
+        return jobqueue.addJob(job)
+        .then(function() {
+            // processNextJob should throw the error JobQueueEmpty
+            // because we haven't setup any handlers, so it doesn't see the job
+            return expect(jobqueue.processNextJob()).to.eventually.be.rejectedWith(jobqueue.errors.JobQueueEmpty)
         })
     })
 })

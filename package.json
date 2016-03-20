@@ -21,5 +21,11 @@
   "bugs": {
     "url": "https://github.com/jameshy/pg-job-queue/issues"
   },
-  "homepage": "https://github.com/jameshy/pg-job-queue#readme"
+  "homepage": "https://github.com/jameshy/pg-job-queue#readme",
+  "dependencies": {
+    "bluebird": "^3.3.4",
+    "chai": "^3.5.0",
+    "chai-as-promised": "^5.2.0",
+    "lodash": "^4.6.1"
+  }
 }

@@ -49,6 +49,10 @@ describe('Interface', function() {
         expect(jobqueue.processAllJobs instanceof Function).to.be.true
     })
 
+    it("must have function 'waitingCount'", function() {
+        expect(jobqueue.waitingCount instanceof Function).to.be.true
+    })
+
     it("must export 'pgp'", function() {
         expect(jobqueue.pgp instanceof require('pg-promise')).to.be.an.object
     })

@@ -1,45 +1,61 @@
 'use strict'
-var Promise = require('bluebird')
-var sinon = require('sinon')
-var jobqueue = require('../lib')
-var chai = require('chai')
-var should = require('chai').should()
-var expect = require('chai').expect
-var chaiAsPromised = require('chai-as-promised')
-chai.use(chaiAsPromised)
-var bluebird = require('bluebird')
-require('sinon-as-promised')(bluebird)
 
-const connectionString = 'postgres://postgres@localhost/job-queue-test'
+require('./support/common')
+const _ = require('lodash');
+const destroyAndCreate = require('./support/db').destroyAndCreate
+const jobqueue = require('../lib')
 
-var pgDestroyCreate = require('pg-destroy-create-db')(connectionString)
 
 describe('Job Queue', function() {
 
     beforeEach(function() {
-        var destroyCreate = Promise.promisify(pgDestroyCreate.destroyCreate, {context: pgDestroyCreate})
-        return destroyCreate()
-        .then(() => {
-            return jobqueue.connect(connectionString)
-        })
-        .then(jobqueue.installSchema)
-        .then(jobqueue.clearHandlers).then(function() {
-            return jobqueue.connect(connectionString)
-        })
+        return destroyAndCreate()
     })
 
     afterEach(function() {
         return jobqueue.disconnect()
     })
 
-    it('should be able to add a job to the queue and it gets processed()', function() {
+    describe('addJob should throw an exception when called with invalid arguments', function() {
+        this.validJob = {
+            type: 'sendMail',
+            scheduledFor: new Date(),
+            maxAttempts: 1,
+            data: {}
+        }
 
-        function handler(job, jobqueue) {
+        it('should reject non-objects', function() {
+            expect(() => jobqueue.addJob(1)).to.throw(TypeError)
+        })
+
+        it('should reject scheduledFor specified with non-date', function() {
+            var job = _.extend({}, this.validJob, {scheduledFor: 123})
+            expect(() => jobqueue.addJob(job)).to.throw(TypeError)
+        })
+
+        it('should reject invalid type', function() {
+            var job = _.extend({}, this.validJob, {type: 123})
+            expect(() => jobqueue.addJob(job)).to.throw(TypeError)
+        })
+
+        it('should reject invalid maxAttempts', function() {
+            var job = _.extend({}, this.validJob, {maxAttempts: 123})
+            expect(() => jobqueue.addJob(job)).to.throw(TypeError)
+
+            job = _.extend({}, this.validJob, {maxAttempts: -123})
+            expect(() => jobqueue.addJob(job)).to.throw(TypeError)
+        })
+
+    })
+
+    it('should accept a new job and then process it once', function() {
+
+        function jobHandler(job, jobqueue) {
             // send email to job.data.recipient, message=job.data.message
             return job.finish()
         }
 
-        var spy = sinon.spy(handler)
+        var spy = sinon.spy(jobHandler)
 
         // setup a single job handler
         jobqueue.addHandlers({
@@ -65,7 +81,7 @@ describe('Job Queue', function() {
                 expect(spy.getCall(0).args[0].data).to.deep.equal(job.data)
 
                 // try and process the job again (should fail)
-                return jobqueue.processNextJob().should.eventually.be.rejected
+                return expect(jobqueue.processNextJob()).to.eventually.be.rejected
             })
         })
     })
@@ -81,7 +97,7 @@ describe('Job Queue', function() {
 
         var job = {
             type: 'failingJob',
-            maxAttempts: 0
+            maxAttempts: 1
         }
 
         return jobqueue.addJob(job)
@@ -90,8 +106,8 @@ describe('Job Queue', function() {
         .then(function(jobs) {
             expect(jobs.length).to.equal(1)
             var job = jobs[0]
-            job.failedAttempts.should.equal(1)
-            job.lastFailureMessage.should.equal(errmsg)
+            expect(job.failedAttempts).to.equal(1)
+            expect(job.lastFailureMessage).to.equal(errmsg)
         })
     })
 
@@ -124,9 +140,9 @@ describe('Job Queue', function() {
             return jobqueue.getFailedJobs().then(function(jobs) {
                 expect(jobs.length).to.equal(1)
                 var job = jobs[0]
-                job.state.should.equal('failed')
-                job.failedAttempts.should.equal(5)
-                job.maxAttempts.should.equal(5)
+                expect(job.state).to.equal('failed')
+                expect(job.failedAttempts).to.equal(5)
+                expect(job.maxAttempts).to.equal(5)
             })
         })
     })

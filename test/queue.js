@@ -87,11 +87,10 @@ describe('Job Queue', function() {
     })
 
     it('should not retry a failed job with maxAttempts=1', function() {
-        const errmsg = 'fatal error 123'
-
+        
         jobqueue.addHandlers({
             failingJob: function() {
-                throw new Error(errmsg)
+                throw new Error('error message')
             }
         })
 
@@ -107,14 +106,14 @@ describe('Job Queue', function() {
             expect(jobs.length).to.equal(1)
             var job = jobs[0]
             expect(job.failedAttempts).to.equal(1)
-            expect(job.lastFailureMessage).to.equal(errmsg)
+            expect(job.lastFailureMessage).to.equal('error message')
         })
     })
 
     it('should retry a failed job `maxAttempts` times', function() {
         jobqueue.addHandlers({
             failingJob: function() {
-                throw new Error('fail')
+                throw new Error('error message')
             }
         })
         var job = {
@@ -143,8 +142,45 @@ describe('Job Queue', function() {
                 expect(job.state).to.equal('failed')
                 expect(job.failedAttempts).to.equal(5)
                 expect(job.maxAttempts).to.equal(5)
+                expect(job.lastFailureMessage).to.equal('error message')
             })
         })
+    })
+
+    it('should fail a job when job.fail() is called', function() {
+        jobqueue.addHandlers({
+            failingJob: function(job) {
+                return job.fail('error message')
+            }
+        })
+        var job = {
+            type: 'failingJob'
+        }
+        return jobqueue.addJob(job)
+        .then(function() {
+            var loop = function() {
+                return jobqueue.processNextJob().then(function() {
+                    return loop()
+                })
+            }
+            return loop()
+        }).catch(function(e) {
+            if (!(e instanceof jobqueue.pgp.QueryResultError)) {
+                throw e
+            }
+        }).then(function() {
+            // job has been run many times and should have reached complete failure
+            // check that is true
+            return jobqueue.getFailedJobs().then(function(jobs) {
+                expect(jobs.length).to.equal(1)
+                var job = jobs[0]
+                expect(job.state).to.equal('failed')
+                expect(job.failedAttempts).to.equal(1)
+                expect(job.maxAttempts).to.equal(1)
+                expect(job.lastFailureMessage).to.equal('error message')
+            })
+        })
+
     })
 
     it('should correctly reschedule a job', function() {

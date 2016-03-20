@@ -1,7 +1,7 @@
 'use strict'
 var Promise = require('bluebird')
 var sinon = require('sinon')
-var jobqueue = require('pg-job-queue')
+var jobqueue = require('../lib')
 var chai = require('chai')
 var should = require('chai').should()
 var expect = require('chai').expect

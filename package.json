@@ -27,6 +27,7 @@
     "chai": "^3.5.0",
     "chai-as-promised": "^5.2.0",
     "lodash": "^4.6.1",
+    "mocha": "^2.4.5",
     "pg-destroy-create-db": "^1.0.2",
     "pg-promise": "^3.3.1",
     "sinon": "^1.17.3",

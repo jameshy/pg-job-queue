@@ -147,11 +147,24 @@ describe('Job Queue', function() {
         })
     })
 
-    // reshedule
-    // should fail when job.fail() is called
-    // should fail when an exception is thrown
+    it('should correctly reschedule a job', function() {
+        jobqueue.addHandlers({
+            rescheduleJob: function(job) {
+                return job.reschedule(new Date())
+            }
+        })
 
+        var job = {
+            type: 'rescheduleJob',
+        }
 
+        return jobqueue.addJob(job)
+        .then(jobqueue.processNextJob)
+        .then(jobqueue.processNextJob)
+        .then(jobqueue.waitingCount).then(function(count) {
+            expect(count).to.equal(1)
+        })
+    })
 })
 
 

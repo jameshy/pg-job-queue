@@ -1,6 +1,6 @@
 {
   "name": "pg-job-queue",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "A job queue for node.js based on PostgreSQL",
   "main": "lib/index.js",
   "scripts": {

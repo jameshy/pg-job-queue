@@ -16,7 +16,7 @@ exports.destroyAndCreate = function() {
     // import the schema
     .then(jobqueue.installSchema)
     // clear job-handlers
-    .then(jobqueue.clearHandlers).then(() => {
+    .then(() => {
         return jobqueue.connect(connectionString)
     })
 }

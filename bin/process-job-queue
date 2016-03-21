@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 'use strict'
-
 require('string-format').extend(String.prototype)
-var program = require('commander')
-var jobQueue = require('../lib')
+const program = require('commander')
+const jobQueue = require('../lib')
+const cluster = require('cluster')
+
+
 
 program
     .version('0.0.1')
@@ -20,27 +22,39 @@ program
 
 program.parse(process.argv)
 
-console.log("loading handlers from '{}'..".format(program.handlersFile))
+if (cluster.isMaster) {
+    console.log("loading handlers from '{}'..".format(program.handlersFile))
+}
 
 var handlers = require(program.handlersFile)
 
-function gracefulShutdown() {
-    console.log('shutting down..')
-    console.log('waiting for jobs to finish')
-    jobQueue.stopProcessing().then(() => {
-        process.exit()
+if (cluster.isMaster) {
+    const numCPUs = require('os').cpus().length;
+    console.log('launching {} workers'.format(numCPUs))
+    for (var i =0; i < numCPUs; i++) {
+        cluster.fork()
+    }
+}
+else {
+    function log(s) {
+        console.log('worker {} - {}'.format(cluster.worker.id, s))
+    }
+    function gracefulShutdown() {
+        log('waiting for jobs to finish before shutdown')
+        jobQueue.stopProcessing().then(() => {
+            process.exit()
+        })
+    }
+
+    // when the process is politely killed, do it gracefully (wait for the current job to finish processing)
+    process.on('SIGINT', gracefulShutdown)
+    process.on('SIGTERM', gracefulShutdown)
+
+    jobQueue.connect(program.connectionString).then(() => {
+        jobQueue.setHandlers(handlers)
+        log('processing jobs..')
+        jobQueue.startProcessing().catch((e) => {
+            console.error(e.stack)
+        })
     })
 }
-
-// when the process is politely killed, do it gracefully (wait for the current job to finish processing)
-process.on('SIGINT', gracefulShutdown)
-process.on('SIGTERM', gracefulShutdown)
-
-jobQueue.connect(program.connectionString).then(() => {
-    jobQueue.setHandlers(handlers)
-    console.log('processing jobs..')
-    jobQueue.startProcessing().catch((e) => {
-        console.error(e.stack)
-
-    })
-})

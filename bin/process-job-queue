@@ -19,8 +19,14 @@ program
         'postgresql connection string. defaults to postgres://postgres@localhost/pg-job-queue',
         'postgres://postgres@localhost/pg-job-queue'
     )
+    .option(
+        '-m, --multi-process',
+        'spawn a process for each cpu available',
+        false
+    )
 
 program.parse(process.argv)
+
 
 if (cluster.isMaster) {
     console.log("loading handlers from '{}'..".format(program.handlersFile))
@@ -28,7 +34,7 @@ if (cluster.isMaster) {
 
 var handlers = require(program.handlersFile)
 
-if (cluster.isMaster) {
+if (cluster.isMaster && program.multiProcess) {
     const numCPUs = require('os').cpus().length;
     console.log('launching {} workers'.format(numCPUs))
     for (var i =0; i < numCPUs; i++) {
@@ -37,7 +43,12 @@ if (cluster.isMaster) {
 }
 else {
     function log(s) {
-        console.log('worker {} - {}'.format(cluster.worker.id, s))
+        if (program.multiProcess) {
+            console.log('worker {} - {}'.format(cluster.worker.id, s))
+        }
+        else {
+            console.log(s)
+        }
     }
     function gracefulShutdown() {
         log('waiting for jobs to finish before shutdown')

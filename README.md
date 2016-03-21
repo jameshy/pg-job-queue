@@ -37,7 +37,8 @@ var jobQueue = require('pg-job-queue')
 
 var handlers = {
     sendEmail: function(job) {
-        return sendMail(job.data.toAddress, job.data.message).then(() => {
+        return sendMail(job.data.toAddress, job.data.message)
+        .then(() => {
             return job.finish()
         })
     }

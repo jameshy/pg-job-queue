@@ -8,12 +8,13 @@ const jobqueue = require('../lib')
 
 describe('Job Queue', function() {
 
-    beforeEach(function() {
+    before(function() {
+        // drop and create the database and install schema
         return destroyAndCreate()
     })
 
-    afterEach(function() {
-        return jobqueue.disconnect()
+    beforeEach(function() {
+        return jobqueue.clearAllJobs()
     })
 
     describe('addJob should throw an exception when called with invalid arguments', function() {

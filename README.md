@@ -30,6 +30,8 @@ jobQueue.connect('postgres://postgres@localhost/my-job-queue')
 
 ## Process jobs as they arrive
 
+#### Programmatically
+
 ```javascript
 var jobQueue = require('pg-job-queue')
 
@@ -43,6 +45,24 @@ var handlers = {
 
 jobQueue.connect('postgres://postgres@localhost/my-job-queue')
 .then(jobQueue.startProcessing)
+```
+
+#### Using process-job-queue tool
+
+##### 1. Create handlers.js file
+```javascript
+module.exports = {
+    sendEmail: function(job) {
+        return sendMail(job.data.toAddress, job.data.message).then(() => {
+            return job.finish()
+        })
+    }
+}
+```
+
+##### 2. Run process-job-queue
+```bash
+node_modules/pg-job-queue/bin/process-job-queue -f ./handlers.js -c postgres://postgres@localhost/my-job-queue
 ```
 
 ## License

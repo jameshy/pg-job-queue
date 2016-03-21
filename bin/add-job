@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+'use strict'
+require('string-format').extend(String.prototype)
+const program = require('commander')
+const jobQueue = require('../lib')
+
+program
+    .version('0.0.1')
+    .option(
+        '--type <type>',
+        'job type'
+    )
+    .option(
+        '--data <data>',
+        'job data (json)',
+        {}
+    )
+    .option(
+        '-c, --connection-string <connstring>',
+        'postgresql connection string. defaults to postgres://postgres@localhost/pg-job-queue',
+        'postgres://postgres@localhost/pg-job-queue'
+    )
+
+program.parse(process.argv)
+
+
+if (!program.type) {
+    return program.outputHelp()
+}
+
+jobQueue.connect(program.connectionString).then(() => {
+    var job = {
+        type: program.type,
+        data: program.data
+    }
+    function x() {
+        return jobQueue.addJob(job).then(function() {
+            return x()
+        })
+    }
+    return x()
+    // return jobQueue.addJob(job).then(jobQueue.disconnect).then(process.exit)
+})

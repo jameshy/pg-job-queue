@@ -38,7 +38,7 @@ BEGIN
         SELECT * FROM "JobQueue"
         WHERE
             "state" = 'waiting' AND
-            ($2 = '{}' OR "type" = ANY($2)) AND
+            ($2::text[] = '{}' OR "type" = ANY($2::text[])) AND
             
             ("scheduledFor" IS NULL OR "scheduledFor" <= NOW())
         ORDER BY "id" ASC

@@ -8,12 +8,13 @@ const jobqueue = require('../lib')
 
 describe('Job Queue', function() {
 
-    beforeEach(function() {
+    before(function() {
+        // drop and create the database and install schema
         return destroyAndCreate()
     })
 
-    afterEach(function() {
-        return jobqueue.disconnect()
+    beforeEach(function() {
+        return jobqueue.clearAllJobs()
     })
 
     describe('addJob should throw an exception when called with invalid arguments', function() {
@@ -58,7 +59,7 @@ describe('Job Queue', function() {
         var spy = sinon.spy(jobHandler)
 
         // setup a single job handler
-        jobqueue.addHandlers({
+        jobqueue.setHandlers({
             sendEmail: spy
         })
 
@@ -86,9 +87,8 @@ describe('Job Queue', function() {
         })
     })
 
-    it('should not retry a failed job with maxAttempts=1', function() {
-        
-        jobqueue.addHandlers({
+    it('should mark a job as failed if it throws an exception', function() {
+        jobqueue.setHandlers({
             failingJob: function() {
                 throw new Error('error message')
             }
@@ -99,10 +99,12 @@ describe('Job Queue', function() {
             maxAttempts: 1
         }
 
+
         return jobqueue.addJob(job)
         .then(jobqueue.processNextJob)
         .then(jobqueue.getFailedJobs)
         .then(function(jobs) {
+
             expect(jobs.length).to.equal(1)
             var job = jobs[0]
             expect(job.failedAttempts).to.equal(1)
@@ -111,7 +113,7 @@ describe('Job Queue', function() {
     })
 
     it('should retry a failed job `maxAttempts` times', function() {
-        jobqueue.addHandlers({
+        jobqueue.setHandlers({
             failingJob: function() {
                 throw new Error('error message')
             }
@@ -147,7 +149,7 @@ describe('Job Queue', function() {
     })
 
     it('should fail a job when job.fail() is called', function() {
-        jobqueue.addHandlers({
+        jobqueue.setHandlers({
             failingJob: function(job) {
                 return job.fail('error message')
             }
@@ -183,7 +185,7 @@ describe('Job Queue', function() {
     })
 
     it('should correctly reschedule a job', function() {
-        jobqueue.addHandlers({
+        jobqueue.setHandlers({
             rescheduleJob: function(job) {
                 return job.reschedule(new Date())
             }

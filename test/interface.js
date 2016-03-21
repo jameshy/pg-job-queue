@@ -13,12 +13,8 @@ describe('Interface', function() {
         expect(jobqueue.disconnect instanceof Function).to.be.true
     })
 
-    it("must have function 'addHandlers'", function() {
-        expect(jobqueue.addHandlers instanceof Function).to.be.true
-    })
-
-    it("must have function 'clearHandlers'", function() {
-        expect(jobqueue.clearHandlers instanceof Function).to.be.true
+    it("must have function 'setHandlers'", function() {
+        expect(jobqueue.setHandlers instanceof Function).to.be.true
     })
 
     it("must have function 'startProcessing'", function() {

@@ -14,16 +14,15 @@ npm install pg-job-queue
 ## Create a job
 
 ```javascript
-var jobQueue = require('pg-job-queue')
-jobQueue.connect('postgres://postgres@localhost/my-job-queue')
-.then(() => {
-    return jobQueue.addJob({
-        type: 'sendEmail',
-        data: {
-            toAddress: 'demo@example.com',
-            message: 'hello'
-        }
-    })
+const jobqueue = require('pg-job-queue')
+const queue = new jobqueue('postgres://postgres@localhost/my-job-queue')
+
+queue.addJob({
+    type: 'sendEmail',
+    data: {
+        toAddress: 'demo@example.com',
+        message: 'hello'
+    }
 })
 ```
 
@@ -33,7 +32,9 @@ jobQueue.connect('postgres://postgres@localhost/my-job-queue')
 #### Programmatically
 
 ```javascript
-var jobQueue = require('pg-job-queue')
+
+const jobqueue = require('pg-job-queue')
+const queue = new jobqueue('postgres://postgres@localhost/my-job-queue')
 
 var handlers = {
     sendEmail: function(job) {
@@ -43,9 +44,9 @@ var handlers = {
         })
     }
 }
+queue.addHandlers(handlers)
 
-jobQueue.connect('postgres://postgres@localhost/my-job-queue')
-.then(jobQueue.startProcessing)
+queue.startProcessing()
 ```
 
 #### Using process-job-queue tool

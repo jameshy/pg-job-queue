@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+'use strict'
+require('string-format').extend(String.prototype)
+const program = require('commander')
+const jobqueue = require('../lib')
+const cluster = require('cluster')
+
+program
+    .version('0.0.1')
+    .option(
+        '-c, --connection-string <connstring>',
+        'postgresql connection string. defaults to postgres://postgres@localhost/pg-job-queue',
+        'postgres://postgres@localhost/pg-job-queue'
+    )
+    // .option(
+    //     '-c, --create-database',
+    //     'create the database if it does not exist',
+    //     false
+    // )
+
+program.parse(process.argv)
+
+
+var queue = new jobqueue(program.connectionString)
+queue.installSchema()
+.then(() => {
+    return queue.disconnect()
+})
+.catch((e) => {
+    console.error(e.stack)
+    queue.disconnect()
+})

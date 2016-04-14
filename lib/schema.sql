@@ -1,10 +1,3 @@
--- DROP FUNCTION IF EXISTS public.pending_jobs(integer);
--- DROP TABLE IF EXISTS "JobQueue";
--- DROP TYPE jobState;
-
-
-
-
 CREATE TYPE jobState AS ENUM ('waiting', 'processing', 'failed', 'finished');
 
 CREATE TABLE "JobQueue"
@@ -24,29 +17,3 @@ CREATE TABLE "JobQueue"
 WITH (
     OIDS=FALSE
 );
-
-
-
-
-CREATE OR replace FUNCTION public.pending_jobs (integer, text[] default '{}') RETURNS SETOF "JobQueue" AS
-$$
-DECLARE
-    r "JobQueue" % rowtype;
-BEGIN
-    LOCK TABLE "JobQueue" IN EXCLUSIVE MODE;
-    FOR r IN
-        SELECT * FROM "JobQueue"
-        WHERE
-            "state" = 'waiting' AND
-            ($2::text[] = '{}' OR "type" = ANY($2::text[])) AND
-            
-            ("scheduledFor" IS NULL OR "scheduledFor" <= NOW())
-        ORDER BY "id" ASC
-        LIMIT $1
-    LOOP
-        UPDATE "JobQueue" SET "state"='processing' WHERE "id"=r."id" RETURNING * INTO r;
-        RETURN NEXT r;
-  END LOOP;
-  RETURN;
-END
-$$ LANGUAGE plpgsql VOLATILE STRICT;

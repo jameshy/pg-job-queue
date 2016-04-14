@@ -1,8 +1,7 @@
 'use strict'
-
 require('./support/common')
 const _ = require('lodash');
-const destroyAndCreate = require('./support/db').destroyAndCreate
+const db = require('./support/db')
 const jobqueue = require('../lib')
 
 
@@ -10,11 +9,13 @@ describe('Job Queue', function() {
 
     before(function() {
         // drop and create the database and install schema
-        return destroyAndCreate()
+        return db.destroyAndCreate().then((queue) => {
+            this.queue = queue
+        })
     })
 
     beforeEach(function() {
-        return jobqueue.clearAllJobs()
+        return this.queue.clearAllJobs()
     })
 
     describe('addJob should throw an exception when called with invalid arguments', function() {
@@ -26,32 +27,32 @@ describe('Job Queue', function() {
         }
 
         it('should reject non-objects', function() {
-            expect(() => jobqueue.addJob(1)).to.throw(TypeError)
+            expect(() => this.queue.addJob(1)).to.throw(TypeError)
         })
 
         it('should reject scheduledFor specified with non-date', function() {
             var job = _.extend({}, this.validJob, {scheduledFor: 123})
-            expect(() => jobqueue.addJob(job)).to.throw(TypeError)
+            expect(() => this.queue.addJob(job)).to.throw(TypeError)
         })
 
         it('should reject invalid type', function() {
             var job = _.extend({}, this.validJob, {type: 123})
-            expect(() => jobqueue.addJob(job)).to.throw(TypeError)
+            expect(() => this.queue.addJob(job)).to.throw(TypeError)
         })
 
         it('should reject invalid maxAttempts', function() {
             var job = _.extend({}, this.validJob, {maxAttempts: 123})
-            expect(() => jobqueue.addJob(job)).to.throw(TypeError)
+            expect(() => this.queue.addJob(job)).to.throw(TypeError)
 
             job = _.extend({}, this.validJob, {maxAttempts: -123})
-            expect(() => jobqueue.addJob(job)).to.throw(TypeError)
+            expect(() => this.queue.addJob(job)).to.throw(TypeError)
         })
 
     })
 
     it('should accept a new job and then process it once', function() {
 
-        function jobHandler(job, jobqueue) {
+        function jobHandler(job, queue) {
             // send email to job.data.recipient, message=job.data.message
             return job.finish()
         }
@@ -59,7 +60,7 @@ describe('Job Queue', function() {
         var spy = sinon.spy(jobHandler)
 
         // setup a single job handler
-        jobqueue.setHandlers({
+        this.queue.setHandlers({
             sendEmail: spy
         })
 
@@ -73,22 +74,22 @@ describe('Job Queue', function() {
 
 
         // add a job
-        return jobqueue.addJob(job).then(function() {
+        return this.queue.addJob(job).then(() => {
             // process the job
-            return jobqueue.processNextJob().then(function() {
+            return this.queue.processNextJob().then(() => {
 
                 // check the handler was called correctly
                 expect(spy.calledOnce).to.be.true
                 expect(spy.getCall(0).args[0].data).to.deep.equal(job.data)
 
                 // try and process the job again (should fail)
-                return expect(jobqueue.processNextJob()).to.eventually.be.rejected
+                return expect(this.queue.processNextJob()).to.eventually.be.rejected
             })
         })
     })
 
     it('should mark a job as failed if it throws an exception', function() {
-        jobqueue.setHandlers({
+        this.queue.setHandlers({
             failingJob: function() {
                 throw new Error('error message')
             }
@@ -100,11 +101,10 @@ describe('Job Queue', function() {
         }
 
 
-        return jobqueue.addJob(job)
-        .then(jobqueue.processNextJob)
-        .then(jobqueue.getFailedJobs)
+        return this.queue.addJob(job)
+        .then(() => this.queue.processNextJob())
+        .then(() => this.queue.getFailedJobs())
         .then(function(jobs) {
-
             expect(jobs.length).to.equal(1)
             var job = jobs[0]
             expect(job.failedAttempts).to.equal(1)
@@ -113,7 +113,7 @@ describe('Job Queue', function() {
     })
 
     it('should retry a failed job `maxAttempts` times', function() {
-        jobqueue.setHandlers({
+        this.queue.setHandlers({
             failingJob: function() {
                 throw new Error('error message')
             }
@@ -122,22 +122,22 @@ describe('Job Queue', function() {
             type: 'failingJob',
             maxAttempts: 5
         }
-        return jobqueue.addJob(job)
-        .then(function() {
-            var loop = function() {
-                return jobqueue.processNextJob().then(function() {
+        return this.queue.addJob(job)
+        .then(() => {
+            var loop = () => {
+                return this.queue.processNextJob().then(() => {
                     return loop()
                 })
             }
             return loop()
-        }).catch(function(e) {
-            if (!(e instanceof jobqueue.errors.JobQueueEmpty)) {
+        }).catch((e) => {
+            if (!(e instanceof this.queue.errors.JobQueueEmpty)) {
                 throw e
             }
-        }).then(function() {
+        }).then(() => {
             // job has been run many times and should have reached complete failure
             // check that is true
-            return jobqueue.getFailedJobs().then(function(jobs) {
+            return this.queue.getFailedJobs().then(function(jobs) {
                 expect(jobs.length).to.equal(1)
                 var job = jobs[0]
                 expect(job.state).to.equal('failed')
@@ -149,7 +149,7 @@ describe('Job Queue', function() {
     })
 
     it('should fail a job when job.fail() is called', function() {
-        jobqueue.setHandlers({
+        this.queue.setHandlers({
             failingJob: function(job) {
                 return job.fail('error message')
             }
@@ -157,22 +157,20 @@ describe('Job Queue', function() {
         var job = {
             type: 'failingJob'
         }
-        return jobqueue.addJob(job)
-        .then(function() {
-            var loop = function() {
-                return jobqueue.processNextJob().then(function() {
-                    return loop()
-                })
+        return this.queue.addJob(job)
+        .then(() => {
+            var loop = () => {
+                return this.queue.processNextJob().then(() => loop())
             }
             return loop()
-        }).catch(function(e) {
-            if (!(e instanceof jobqueue.errors.JobQueueEmpty)) {
+        }).catch((e) => {
+            if (!(e instanceof this.queue.errors.JobQueueEmpty)) {
                 throw e
             }
-        }).then(function() {
+        }).then(() => {
             // job has been run many times and should have reached complete failure
             // check that is true
-            return jobqueue.getFailedJobs().then(function(jobs) {
+            return this.queue.getFailedJobs().then((jobs) => {
                 expect(jobs.length).to.equal(1)
                 var job = jobs[0]
                 expect(job.state).to.equal('failed')
@@ -185,7 +183,7 @@ describe('Job Queue', function() {
     })
 
     it('should correctly reschedule a job', function() {
-        jobqueue.setHandlers({
+        this.queue.setHandlers({
             rescheduleJob: function(job) {
                 return job.reschedule(new Date())
             }
@@ -195,10 +193,10 @@ describe('Job Queue', function() {
             type: 'rescheduleJob',
         }
 
-        return jobqueue.addJob(job)
-        .then(jobqueue.processNextJob)
-        .then(jobqueue.processNextJob)
-        .then(jobqueue.waitingCount).then(function(count) {
+        return this.queue.addJob(job)
+        .then(() => this.queue.processNextJob())
+        .then(() => this.queue.processNextJob())
+        .then(() => this.queue.waitingCount()).then((count) => {
             expect(count).to.equal(1)
         })
     })
@@ -207,11 +205,79 @@ describe('Job Queue', function() {
         var job = {
             type: 'sendmail',
         }
-        return jobqueue.addJob(job)
-        .then(function() {
+        return this.queue.addJob(job)
+        .then(() => {
             // processNextJob should throw the error JobQueueEmpty
             // because we haven't setup any handlers, so it doesn't see the job
-            return expect(jobqueue.processNextJob()).to.eventually.be.rejectedWith(jobqueue.errors.JobQueueEmpty)
+            return expect(this.queue.processNextJob()).to.eventually.be.rejectedWith(this.queue.errors.JobQueueEmpty)
+        })
+    })
+
+    it('should not allow multiple threads to acquire the same job', function() {
+        // initialize 2 jobqueue instances to the same database
+        var queue1 = new jobqueue(db.connectionString)
+        var queue2 = new jobqueue(db.connectionString)
+
+        // the job we will use to test
+        var job = {
+            type: 'slowJob',
+        }
+        var handlers = {
+            slowJob: function(job) {
+                return Promise.delay(100).then(() => {
+                    return job.done()
+                })
+            }
+        }
+
+        // a wrapper around processNextJob(), that returns false on error
+        function catchProcessJobError(queue) {
+            return queue.processNextJob().then(() => {
+                return true
+            }).catch((e) => {
+                return false
+            })
+        }
+
+        // use the same handlers for both jobqueues
+        queue1.setHandlers(handlers)
+        queue2.setHandlers(handlers)
+
+        // add the test job
+        return queue1.addJob(job).then(() => {
+            // try and process the job with 2 threads
+            return Promise.join(
+                catchProcessJobError(queue1),
+                catchProcessJobError(queue2),
+                function(result1, result2) {
+                    // one of the queues should succeeed (it acquires the job and processes it successfully)
+                    // the other queue should fail (it cannot acquire the already acquired job)
+                    expect(result1 != result2).to.be.true
+                })
+        })
+    })
+
+    it('should allow jobs to destroy themselves', function() {
+        this.queue.setHandlers({
+            testjob: function(job) {
+                return job.destroy()
+            }
+        })
+        var job = {
+            type: 'testjob'
+        }
+
+        return this.queue.addJob(job)
+        .then(() => {
+            return this.queue.waitingCount().then((count) => {
+                expect(count).to.equal(1)
+            })
+        })
+        .then(() => this.queue.processNextJob())
+        .then(() => {
+            return this.queue.waitingCount().then((count) => {
+                expect(count).to.equal(0)
+            })
         })
     })
 })

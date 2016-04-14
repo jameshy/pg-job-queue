@@ -11,12 +11,12 @@ exports.destroyAndCreate = function() {
     // destroy and create database
     return destroyCreate()
     .then(() => {
-        return jobqueue.connect(connectionString)
-    })
-    // import the schema
-    .then(jobqueue.installSchema)
-    // clear job-handlers
-    .then(() => {
-        return jobqueue.connect(connectionString)
+        var queue = new jobqueue(connectionString)
+        // import the schema
+        return queue.installSchema().then(() => {
+            return queue
+        })
     })
 }
+
+exports.connectionString = connectionString

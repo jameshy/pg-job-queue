@@ -2,9 +2,8 @@
 'use strict'
 require('string-format').extend(String.prototype)
 const program = require('commander')
-const jobQueue = require('../lib')
+const jobqueue = require('../lib')
 const cluster = require('cluster')
-
 
 
 program
@@ -27,12 +26,12 @@ program
 
 program.parse(process.argv)
 
-
 if (cluster.isMaster) {
     console.log("loading handlers from '{}'..".format(program.handlersFile))
 }
 
-var handlers = require(program.handlersFile)
+var path = require('path')
+var handlers = require(path.join(process.cwd(), program.handlersFile))
 
 if (cluster.isMaster && program.multiProcess) {
     const numCPUs = require('os').cpus().length;
@@ -52,8 +51,8 @@ else {
     }
     function gracefulShutdown() {
         log('waiting for jobs to finish before shutdown')
-        jobQueue.stopProcessing().then(() => {
-            process.exit()
+        queue.stopProcessing().then(() => {
+            queue.disconnect()
         })
     }
 
@@ -61,11 +60,10 @@ else {
     process.on('SIGINT', gracefulShutdown)
     process.on('SIGTERM', gracefulShutdown)
 
-    jobQueue.connect(program.connectionString).then(() => {
-        jobQueue.setHandlers(handlers)
-        log('processing jobs..')
-        jobQueue.startProcessing().catch((e) => {
-            console.error(e.stack)
-        })
+    var queue = new jobqueue(program.connectionString)
+    queue.setHandlers(handlers)
+    log('processing jobs..')
+    queue.startProcessing().catch((e) => {
+        console.error(e.stack)
     })
 }

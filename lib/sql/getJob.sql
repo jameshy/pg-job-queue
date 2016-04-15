@@ -1,5 +1,5 @@
 WITH RECURSIVE jobs AS (
-  SELECT (j).*, pg_try_advisory_xact_lock((j).id) AS locked
+  SELECT (j).*, pg_try_advisory_lock((j).id) AS locked
   FROM (
     SELECT j
     FROM "JobQueue" AS j
@@ -10,7 +10,7 @@ WITH RECURSIVE jobs AS (
           LIMIT 1
   ) AS t1
   UNION ALL (
-    SELECT (j).*, pg_try_advisory_xact_lock((j).id) AS locked
+    SELECT (j).*, pg_try_advisory_lock((j).id) AS locked
     FROM (
       SELECT (
         SELECT j

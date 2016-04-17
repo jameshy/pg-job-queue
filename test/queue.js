@@ -18,6 +18,16 @@ describe('Job Queue', function() {
         return this.queue.clearAllJobs()
     })
 
+    describe('checkDatabase', function() {
+        it('should succeed when the database is OK', function() {
+            return this.queue.checkDatabase()
+        })
+        it('should fail when the database not OK', function() {
+            var queue = new jobqueue('postgres://127.0.0.1:61548/unknown')
+            return expect(queue.checkDatabase()).to.eventually.be.rejected
+        })
+    })
+
     describe('addJob should throw an exception when called with invalid arguments', function() {
         this.validJob = {
             type: 'sendMail',

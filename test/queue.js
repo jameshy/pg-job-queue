@@ -3,7 +3,7 @@ require('./support/common')
 const _ = require('lodash');
 const db = require('./support/db')
 const jobqueue = require('../lib')
-
+const Job = require('../lib/job')
 
 describe('Job Queue', function() {
 
@@ -235,7 +235,7 @@ describe('Job Queue', function() {
         var handlers = {
             slowJob: function(job) {
                 return Promise.delay(100).then(() => {
-                    return job.done()
+                    return job.finish()
                 })
             }
         }
@@ -284,6 +284,11 @@ describe('Job Queue', function() {
             })
         })
         .then(() => this.queue.processNextJob())
+        .then(() => {
+            return this.queue.failedCount().then((count) => {
+                expect(count).to.equal(0)
+            })
+        })
         .then(() => {
             return this.queue.waitingCount().then((count) => {
                 expect(count).to.equal(0)

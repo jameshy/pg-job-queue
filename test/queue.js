@@ -290,6 +290,30 @@ describe('Job Queue', function() {
             })
         })
     })
+
+    it('should call the configured error handler', function() {
+        var errorHandler = sinon.spy()
+
+        this.queue.setHandlers({
+            // special error handler method
+            $errorHandler: errorHandler,
+            failingJob: function(job) {
+                throw new Error("error")
+            }
+        })
+        var job = {
+            type: 'failingJob'
+        }
+        return this.queue.addJob(job)
+        .then(() => this.queue.processNextJob())
+        .then(() => {
+            // check the error handler was called correctly
+            expect(errorHandler.calledOnce).to.be.true
+            var args = errorHandler.getCall(0).args
+            expect(args[0]).to.be.an.instanceof(Error)
+            expect(args[1]).to.be.an.instanceof(Job)
+        })
+    })
 })
 
 

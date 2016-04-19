@@ -124,8 +124,8 @@ describe('Job Queue', function() {
 
     it('should retry a failed job `maxAttempts` times', function() {
         this.queue.setHandlers({
-            failingJob: function() {
-                throw new Error('error message')
+            failingJob: function(job) {
+                return job.fail('error message', new Date())
             }
         })
         var job = {

@@ -5,7 +5,6 @@ const program = require('commander')
 const jobqueue = require('../lib')
 const cluster = require('cluster')
 
-
 program
     .version('0.0.1')
     .option(
@@ -16,7 +15,7 @@ program
     .option(
         '-c, --connection-string <connstring>',
         'postgresql connection string. defaults to postgres://postgres@localhost/pg-job-queue',
-        'postgres://postgres@localhost/pg-job-queue'
+        false
     )
     .option(
         '-m, --multi-process',
@@ -55,12 +54,21 @@ else {
             queue.disconnect()
         })
     }
+    function getConnectionDetailsFromEnv() {
+        return {
+            host: process.env.PGHOST,
+            port: process.env.PGPORT,
+            database: process.env.PGDATABASE ,
+            user: process.env.PGUSER ,
+            password: process.env.PGPASSWORD
+        }
+    }
 
     // when the process is politely killed, do it gracefully (wait for the current job to finish processing)
     process.on('SIGINT', gracefulShutdown)
     process.on('SIGTERM', gracefulShutdown)
 
-    var queue = new jobqueue(program.connectionString)
+    var queue = new jobqueue(program.connectionString || getConnectionDetailsFromEnv())
     queue.setHandlers(handlers)
     log('processing jobs..')
     queue.startProcessing().catch((e) => {

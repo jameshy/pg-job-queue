@@ -3,7 +3,7 @@ require('./support/common')
 const _ = require('lodash');
 const db = require('./support/db')
 const jobqueue = require('../lib')
-
+const Job = require('../lib/job')
 
 describe('Job Queue', function() {
 
@@ -16,6 +16,16 @@ describe('Job Queue', function() {
 
     beforeEach(function() {
         return this.queue.clearAllJobs()
+    })
+
+    describe('checkDatabase', function() {
+        it('should succeed when the database is OK', function() {
+            return this.queue.checkDatabase()
+        })
+        it('should fail when the database not OK', function() {
+            var queue = new jobqueue('postgres://127.0.0.1:61548/unknown')
+            return expect(queue.checkDatabase()).to.eventually.be.rejected
+        })
     })
 
     describe('addJob should throw an exception when called with invalid arguments', function() {
@@ -114,8 +124,8 @@ describe('Job Queue', function() {
 
     it('should retry a failed job `maxAttempts` times', function() {
         this.queue.setHandlers({
-            failingJob: function() {
-                throw new Error('error message')
+            failingJob: function(job) {
+                return job.fail('error message', new Date())
             }
         })
         var job = {
@@ -225,7 +235,7 @@ describe('Job Queue', function() {
         var handlers = {
             slowJob: function(job) {
                 return Promise.delay(100).then(() => {
-                    return job.done()
+                    return job.finish()
                 })
             }
         }
@@ -275,9 +285,38 @@ describe('Job Queue', function() {
         })
         .then(() => this.queue.processNextJob())
         .then(() => {
+            return this.queue.failedCount().then((count) => {
+                expect(count).to.equal(0)
+            })
+        })
+        .then(() => {
             return this.queue.waitingCount().then((count) => {
                 expect(count).to.equal(0)
             })
+        })
+    })
+
+    it('should call the configured error handler', function() {
+        var errorHandler = sinon.spy()
+
+        this.queue.setHandlers({
+            // special error handler method
+            $errorHandler: errorHandler,
+            failingJob: function(job) {
+                throw new Error("error")
+            }
+        })
+        var job = {
+            type: 'failingJob'
+        }
+        return this.queue.addJob(job)
+        .then(() => this.queue.processNextJob())
+        .then(() => {
+            // check the error handler was called correctly
+            expect(errorHandler.calledOnce).to.be.true
+            var args = errorHandler.getCall(0).args
+            expect(args[0]).to.be.an.instanceof(Error)
+            expect(args[1]).to.be.an.instanceof(Job)
         })
     })
 })

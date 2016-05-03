@@ -3,6 +3,9 @@
   "version": "0.1.4",
   "description": "A job queue for node.js based on PostgreSQL",
   "main": "lib/index.js",
+  "bin" : {
+    "process-job-queue" : "./bin/process-job-queue"
+  },
   "scripts": {
     "test": "mocha test"
   },

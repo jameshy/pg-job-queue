@@ -97,7 +97,7 @@ describe('Job Queue', function() {
         })
     })
 
-    it('should accept a new job with a path type', function() {
+    it('should resolve job types as paths', function() {
         function jobHandler(job, queue) {
             // send email to job.data.recipient, message=job.data.message
             return job.finish()

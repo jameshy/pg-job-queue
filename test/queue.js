@@ -207,7 +207,7 @@ describe('Job Queue', function() {
     it('should retry a failed job `maxAttempts` times', function() {
         this.queue.setHandlers({
             failingJob: function(job) {
-                return job.fail('error message', new Date())
+                return job.fail(new Error('error message'), new Date())
             }
         })
         var job = {
@@ -243,7 +243,7 @@ describe('Job Queue', function() {
     it('should fail a job when job.fail() is called', function() {
         this.queue.setHandlers({
             failingJob: function(job) {
-                return job.fail('error message')
+                return job.fail(new Error('error message'))
             }
         })
         var job = {
@@ -401,6 +401,90 @@ describe('Job Queue', function() {
             expect(args[1]).to.be.an.instanceof(Job)
         })
     })
-})
 
+    describe('$logHandler should be called', function() {
+
+        it('for a failing job', function* () {
+            var logHandler = sinon.spy()
+
+            this.queue.setHandlers({
+                // special error handler method
+                $logHandler: logHandler,
+                failingJob: function(job) {
+                    throw new Error("error")
+                }
+            })
+
+            /* for a failing job */
+            yield this.queue.addJob({type: 'failingJob'})
+            yield this.queue.processNextJob()
+
+            expect(logHandler.calledTwice).to.be.true
+            
+            var firstCallArgs = logHandler.getCall(0).args
+            expect(firstCallArgs[0]).to.equal('starting')
+            expect(firstCallArgs[1]).to.be.an.instanceof(Job)
+
+            var secondCallArgs = logHandler.getCall(1).args
+            expect(secondCallArgs[0]).to.equal('failed')
+            expect(secondCallArgs[1]).to.be.an.instanceof(Job)
+
+        })
+    
+        it('for a healthy job', function*() {
+            var logHandler = sinon.spy()
+
+            this.queue.setHandlers({
+                // special error handler method
+                $logHandler: logHandler,
+                
+                healthyJob: function(job) {
+                }
+            })
+
+            yield this.queue.addJob({type: 'healthyJob'})
+            yield this.queue.processNextJob()
+
+            expect(logHandler.calledTwice).to.be.true
+            
+            var firstCallArgs = logHandler.getCall(0).args
+            expect(firstCallArgs[0]).to.equal('starting')
+            expect(firstCallArgs[1]).to.be.an.instanceof(Job)
+
+            var secondCallArgs = logHandler.getCall(1).args
+            expect(secondCallArgs[0]).to.equal('finished')
+            expect(secondCallArgs[1]).to.be.an.instanceof(Job)
+        })
+
+        it('for a rescheduling job', function*() {
+            var logHandler = sinon.spy()
+
+            this.queue.setHandlers({
+                // special error handler method
+                $logHandler: logHandler,
+                
+                reschedulingJob: function(job) {
+                    return job.reschedule(new Date())
+                }
+            })
+
+            yield this.queue.addJob({type: 'reschedulingJob'})
+            yield this.queue.processNextJob()
+
+            expect(logHandler.calledThrice).to.be.true
+            
+            var firstCallArgs = logHandler.getCall(0).args
+            expect(firstCallArgs[0]).to.equal('starting')
+            expect(firstCallArgs[1]).to.be.an.instanceof(Job)
+
+            var secondCallArgs = logHandler.getCall(1).args
+            expect(secondCallArgs[0]).to.equal('rescheduled')
+            expect(secondCallArgs[1]).to.be.an.instanceof(Job)
+
+            var thirdCallArgs = logHandler.getCall(2).args
+            expect(thirdCallArgs[0]).to.equal('finished')
+            expect(thirdCallArgs[1]).to.be.an.instanceof(Job)
+        })
+    })
+})
 

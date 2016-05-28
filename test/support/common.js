@@ -10,3 +10,5 @@ var chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
 
 require('sinon-as-promised')(Promise)
+
+require('co-mocha')

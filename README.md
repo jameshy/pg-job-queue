@@ -20,7 +20,7 @@ const jobqueue = require('pg-job-queue')
 const queue = new jobqueue('postgres://postgres@localhost/my-job-queue')
 
 queue.addJob({
-    type: 'sendEmail',
+    type: 'sendmail.welcome',
     data: {
         toAddress: 'demo@example.com',
         message: 'hello'
@@ -38,12 +38,15 @@ queue.addJob({
 const jobqueue = require('pg-job-queue')
 const queue = new jobqueue('postgres://postgres@localhost/my-job-queue')
 
+// define your job handlers
 var handlers = {
-    sendEmail: function(job) {
-        return sendMail(job.data.toAddress, job.data.message)
-        .then(() => {
-            return job.finish()
-        })
+    sendmail: {
+        welcome: function(job) {
+            return sendMail(job.data.toAddress, job.data.message)
+            .then(() => {
+                return job.finish()
+            })
+        }
     }
 }
 queue.addHandlers(handlers)
@@ -56,10 +59,12 @@ queue.startProcessing()
 ##### 1. Create handlers.js file
 ```javascript
 module.exports = {
-    sendEmail: function(job) {
-        return sendMail(job.data.toAddress, job.data.message).then(() => {
-            return job.finish()
-        })
+    sendmail: {
+        welcome: function(job) {
+            return sendMail(job.data.toAddress, job.data.message).then(() => {
+                return job.finish()
+            })
+        }
     }
 }
 ```

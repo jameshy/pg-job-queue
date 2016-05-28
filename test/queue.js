@@ -98,7 +98,6 @@ describe('Job Queue', function() {
     })
 
     it('should accept a new job with a path type', function() {
-
         function jobHandler(job, queue) {
             // send email to job.data.recipient, message=job.data.message
             return job.finish()
@@ -115,6 +114,7 @@ describe('Job Queue', function() {
             }
         })
 
+        // define the job
         var job = {
             type: 'emails.subgroup.welcome',
             data: {
@@ -122,9 +122,7 @@ describe('Job Queue', function() {
                 message: 'HELLO'
             }
         }
-
-
-        // add a job
+        // add the job
         return this.queue.addJob(job).then(() => {
             // process the job
             return this.queue.processNextJob().then(() => {

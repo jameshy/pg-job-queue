@@ -57,7 +57,6 @@ describe('Job Queue', function() {
             job = _.extend({}, this.validJob, {maxAttempts: -123})
             expect(() => this.queue.addJob(job)).to.throw(TypeError)
         })
-
     })
 
     it('should accept a new job and then process it once', function() {
@@ -97,6 +96,89 @@ describe('Job Queue', function() {
             })
         })
     })
+
+    it('should resolve job types as paths', function() {
+        function jobHandler(job, queue) {
+            // send email to job.data.recipient, message=job.data.message
+            return job.finish()
+        }
+
+        var spy = sinon.spy(jobHandler)
+
+        // setup a single job handler
+        this.queue.setHandlers({
+            emails: {
+                subgroup: {
+                    welcome: spy
+                }
+            }
+        })
+
+        // define the job
+        var job = {
+            type: 'emails.subgroup.welcome',
+            data: {
+                recipient: 'user@example.com',
+                message: 'HELLO'
+            }
+        }
+        // add the job
+        return this.queue.addJob(job).then(() => {
+            // process the job
+            return this.queue.processNextJob().then(() => {
+
+                // check the handler was called correctly
+                expect(spy.calledOnce).to.be.true
+                expect(spy.getCall(0).args[0].data).to.deep.equal(job.data)
+
+                // try and process the job again (should fail)
+                return expect(this.queue.processNextJob()).to.eventually.be.rejected
+            })
+        })
+    })
+
+    it('should resolve a job handler from a path', function() {
+
+        var handlers = {
+            email: {
+                subgroup: {
+                    welcome: () => {}
+                }
+            },
+            sendEmail: () => {}
+        }
+        this.queue.setHandlers(handlers)
+        var welcome = this.queue.resolveHandler('email.subgroup.welcome')
+        expect(welcome).to.equal(handlers.email.subgroup.welcome)
+        var sendEmail = handlers.sendEmail
+        expect(sendEmail).to.equal(handlers.sendEmail)
+    })
+
+    it('should determine available job types', function() {
+        var handlers = {
+            testJob: () => {},
+            emails: {
+                subgroup: {
+                    welcome: () => {},
+                    goodbye: () => {},
+                }
+            }
+        }
+        this.queue.setHandlers(handlers)
+        var expected = [
+            'testJob',
+            'emails.subgroup.welcome',
+            'emails.subgroup.goodbye',
+        ]
+        var types = this.queue.getAvailableJobTypes()
+
+        // sort them both
+        types = _.sortBy(types)
+        expected = _.sortBy(expected)
+        expect(_.isEqual(types, expected))
+    })
+
+
 
     it('should mark a job as failed if it throws an exception', function() {
         this.queue.setHandlers({

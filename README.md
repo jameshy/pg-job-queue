@@ -61,7 +61,8 @@ queue.startProcessing()
 module.exports = {
     sendmail: {
         welcome: function(job) {
-            return sendMail(job.data.toAddress, job.data.message).then(() => {
+            return sendMail(job.data.toAddress, job.data.message)
+            .then(() => {
                 return job.finish()
             })
         }

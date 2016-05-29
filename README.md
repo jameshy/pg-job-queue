@@ -49,6 +49,8 @@ module.exports = {
 }
 ```
 
+Notice the handler above is nested, so will be invoked when a job is added with type 'sendmail.welcome'.
+
 ##### 2. Run process-job-queue
 ```bash
 node_modules/pg-job-queue/bin/process-job-queue -f ./handlers.js -c postgres://postgres@localhost/my-job-queue
@@ -57,11 +59,11 @@ node_modules/pg-job-queue/bin/process-job-queue -f ./handlers.js -c postgres://p
 ##### Special handler methods
 You can define the following special handler methods:
 
-$logHandler(action, job) - for general purpose logging, it's called whenever something is about to happen on a job.  possible actions are: 'starting', 'destroyed', 'rescheduled', 'failed', 'finished'
+* `$logHandler(action, job)` - for general purpose logging, it's called whenever something is about to happen on a job.  possible actions are: 'starting', 'destroyed', 'rescheduled', 'failed', 'finished'
 
-$errorHandler(error, job) - called whenever an uncaught exception occurs while running a job.
+* `$errorHandler(error, job)` - called whenever an uncaught exception occurs while running a job.
 
-$shutdownHandler() - called when we are stopping processing.  This is useful to close handles that would prevent the node process from terminating.
+* `$shutdownHandler()` - called when we are stopping processing.  This is useful to close handles that would prevent the node process from terminating.
 
 For example:
 ```javascript

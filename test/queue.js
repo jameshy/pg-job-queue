@@ -138,7 +138,6 @@ describe('Job Queue', function() {
     })
 
     it('should resolve a job handler from a path', function() {
-
         var handlers = {
             email: {
                 subgroup: {
@@ -177,7 +176,6 @@ describe('Job Queue', function() {
         expected = _.sortBy(expected)
         expect(_.isEqual(types, expected))
     })
-
 
 
     it('should mark a job as failed if it throws an exception', function() {
@@ -274,7 +272,7 @@ describe('Job Queue', function() {
 
     })
 
-    it('should correctly reschedule a job', function() {
+    it('should correctly reschedule a job', function*() {
         this.queue.setHandlers({
             rescheduleJob: function(job) {
                 return job.reschedule(new Date())
@@ -284,14 +282,96 @@ describe('Job Queue', function() {
         var job = {
             type: 'rescheduleJob',
         }
+        yield this.queue.addJob(job)
+        yield this.queue.processNextJob()
+        yield this.queue.processNextJob()
 
-        return this.queue.addJob(job)
-        .then(() => this.queue.processNextJob())
-        .then(() => this.queue.processNextJob())
-        .then(() => this.queue.waitingCount()).then((count) => {
-            expect(count).to.equal(1)
+
+        var count = yield this.queue.waitingCount()
+        expect(count).to.equal(1)
+    })
+
+    describe('should update lastRun', function() {
+        it('for a rescheduled job', function*() {
+            this.queue.setHandlers({
+                rescheduleJob: function(job) {
+                    return job.reschedule(new Date())
+                }
+            })
+            var job = {
+                type: 'rescheduleJob',
+            }
+
+            
+            var start = new Date()
+            // deduct 1 second, because 'pg' module cannot handle microseconds
+            start.setSeconds(start.getSeconds() - 1)
+            
+            // add the job to the queue and process it
+            yield this.queue.addJob(job)
+            yield this.queue.processNextJob()
+
+            // verify that lastRun column has been correctly updated
+            var allJobs = yield this.queue.getAllJobs()
+            expect(allJobs).to.have.length(1)
+            var _job = allJobs[0]
+            expect(_job.lastRun).afterTime(start)
+            expect(_job.lastRun).beforeTime(new Date())
+        })
+        
+        it('for a finished job', function*() {
+            this.queue.setHandlers({
+                sendmail: function(job) { }
+            })
+            var job = {
+                type: 'sendmail',
+            }
+
+            
+            var start = new Date()
+            // deduct 1 second, because 'pg' module cannot handle microseconds
+            start.setSeconds(start.getSeconds() - 1)
+            
+            // add the job to the queue and process it
+            yield this.queue.addJob(job)
+            yield this.queue.processNextJob()
+
+            // verify that lastRun column has been correctly updated
+            var allJobs = yield this.queue.getAllJobs()
+            expect(allJobs).to.have.length(1)
+            var _job = allJobs[0]
+            expect(_job.lastRun).afterTime(start)
+            expect(_job.lastRun).beforeTime(new Date())
+        })
+
+        it('for a failed job', function*() {
+            this.queue.setHandlers({
+                failingJob: function(job) {
+                    throw new Error("error")
+                }
+            })
+            var job = {
+                type: 'failingJob',
+            }
+
+            
+            var start = new Date()
+            // deduct 1 second, because 'pg' module cannot handle microseconds
+            start.setSeconds(start.getSeconds() - 1)
+            
+            // add the job to the queue and process it
+            yield this.queue.addJob(job)
+            yield this.queue.processNextJob()
+
+            // verify that lastRun column has been correctly updated
+            var allJobs = yield this.queue.getFailedJobs()
+            expect(allJobs).to.have.length(1)
+            var _job = allJobs[0]
+            expect(_job.lastRun).afterTime(start)
+            expect(_job.lastRun).beforeTime(new Date())
         })
     })
+
 
     it('should only process jobs with handlers available', function() {
         var job = {

@@ -12,3 +12,4 @@ chai.use(chaiAsPromised)
 require('sinon-as-promised')(Promise)
 
 require('co-mocha')
+chai.use(require('chai-datetime'))

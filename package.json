@@ -29,6 +29,7 @@
     "bluebird": "^3.3.4",
     "chai": "^3.5.0",
     "chai-as-promised": "^5.2.0",
+    "chai-datetime": "^1.4.1",
     "co-mocha": "^1.1.2",
     "commander": "^2.9.0",
     "lodash": "^4.6.1",

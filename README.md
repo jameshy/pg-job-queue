@@ -31,7 +31,7 @@ queue.addJob({
 
 The tool `process-job-queue` is provided for the continuous processing of jobs.  It will loop forever, polling the database for new jobs, until the process receives either SIGINT or SIGTERM.  If it's terminated while processing a job, it will finish that job before terminating.
 
-The idea is that you define all your job handlers in a standard javascript module, and `process-job-queue` will call your handlers when it processes a job.
+The idea is that you define all your job handlers in a standard javascript module, and `process-job-queue` will call your handlers function when it processes a job. `process-job-queue` will only process jobs that have a matching handler.
 
 ##### 1. Create handlers.js file
 ```javascript
@@ -47,7 +47,7 @@ module.exports = {
 }
 ```
 
-Notice the handler above is nested, so will be invoked when a job is added with type 'sendmail.welcome'.
+Notice the handler above is nested, so it will be invoked when a job is added with type 'sendmail.welcome'.
 
 ##### 2. Run process-job-queue
 ```bash
